@@ -20,7 +20,7 @@ jobs:
         with:
           repository: YangRucheng/MisakaStudy
           ref: ${{ github.event.client_payload.ref }}
-          token: ${{ secrets.GITHUB_PAT }}
+          token: ${{ secrets.PAT }}
 
       - name: 检测变更路径
         id: filter
@@ -51,7 +51,7 @@ jobs:
         with:
           repository: YangRucheng/MisakaStudy
           ref: ${{ github.event.client_payload.ref }}
-          token: ${{ secrets.GITHUB_PAT }}
+          token: ${{ secrets.PAT }}
 
       - name: 安装 Python
         uses: actions/setup-python@v5
@@ -89,7 +89,7 @@ jobs:
         with:
           repository: YangRucheng/MisakaStudy
           ref: ${{ github.event.client_payload.ref }}
-          token: ${{ secrets.GITHUB_PAT }}
+          token: ${{ secrets.PAT }}
 
       - name: 安装 Go
         uses: actions/setup-go@v5
@@ -121,7 +121,7 @@ jobs:
         with:
           repository: YangRucheng/MisakaStudy
           ref: ${{ github.event.client_payload.ref }}
-          token: ${{ secrets.GITHUB_PAT }}
+          token: ${{ secrets.PAT }}
 
       - name: 安装 Go
         uses: actions/setup-go@v5
@@ -164,7 +164,7 @@ jobs:
       - name: 回写测试状态到 MisakaStudy
         if: always()
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_PAT }}
+          GH_TOKEN: ${{ secrets.PAT }}
         run: |
           state=failure
           if [ "${{ job.status }}" = "success" ]; then state=success; fi

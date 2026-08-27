@@ -39,7 +39,7 @@ jobs:
         with:
           repository: YangRucheng/MisakaStudy
           ref: ${{ github.event.client_payload.ref || 'next' }}
-          token: ${{ secrets.GITHUB_PAT }}
+          token: ${{ secrets.PAT }}
 
       - name: 检测变更路径
         id: filter
@@ -69,7 +69,7 @@ jobs:
         with:
           repository: YangRucheng/MisakaStudy
           ref: ${{ github.event.client_payload.ref || 'next' }}
-          token: ${{ secrets.GITHUB_PAT }}
+          token: ${{ secrets.PAT }}
 
       - name: 安装 QEMU
         uses: docker/setup-qemu-action@v3
@@ -114,7 +114,7 @@ jobs:
         with:
           repository: YangRucheng/MisakaStudy
           ref: ${{ github.event.client_payload.ref || 'next' }}
-          token: ${{ secrets.GITHUB_PAT }}
+          token: ${{ secrets.PAT }}
 
       - name: 安装 QEMU
         uses: docker/setup-qemu-action@v3
@@ -151,7 +151,7 @@ jobs:
         with:
           repository: YangRucheng/MisakaStudy
           ref: ${{ github.event.client_payload.ref || 'next' }}
-          token: ${{ secrets.GITHUB_PAT }}
+          token: ${{ secrets.PAT }}
 
       - name: 安装 QEMU
         uses: docker/setup-qemu-action@v3
@@ -197,7 +197,7 @@ jobs:
         with:
           repository: YangRucheng/MisakaStudy
           ref: ${{ github.event.client_payload.ref || 'next' }}
-          token: ${{ secrets.GITHUB_PAT }}
+          token: ${{ secrets.PAT }}
 
       - name: 安装 QEMU
         uses: docker/setup-qemu-action@v3
