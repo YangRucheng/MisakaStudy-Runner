@@ -47,7 +47,7 @@ jobs:
         uses: dorny/paths-filter@v3
         with:
           base: ${{ github.event.client_payload.before }}
-          head: ${{ github.event.client_payload.ref }}
+          ref: ${{ github.event.client_payload.ref }}
           filters: |
             server:
               - 'server/**'
