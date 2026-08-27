@@ -20,7 +20,7 @@ jobs:
         with:
           repository: YangRucheng/MisakaStudy
           ref: ${{ github.event.client_payload.ref }}
-          token: ${{ secrets.MISAKA_PAT }}
+          token: ${{ secrets.GITHUB_PAT }}
 
       - name: 安装 Python
         uses: actions/setup-python@v5
@@ -54,7 +54,7 @@ jobs:
       - name: 回写导出状态到 MisakaStudy
         if: always()
         env:
-          GH_TOKEN: ${{ secrets.MISAKA_PAT }}
+          GH_TOKEN: ${{ secrets.GITHUB_PAT }}
         run: |
           state=failure
           if [ "${{ job.status }}" = "success" ]; then state=success; fi
