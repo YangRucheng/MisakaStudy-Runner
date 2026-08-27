@@ -170,9 +170,9 @@ jobs:
         run: |
           state=failure
           if [ "${{ job.status }}" = "success" ]; then state=success; fi
-          # github.job_id 仅在执行步骤内可用，env/配置阶段为空，故运行时从 API 查询当前 job 的 ID
+          # job context 无 name 字段、github.job_id 在配置阶段为空，改为按本步骤名反查当前 job 的 ID
           JOB_ID="$(gh api "repos/${{ github.repository }}/actions/runs/$RUN_ID/jobs" \
-            --jq ".jobs[] | select(.name == \"${{ job.name }}\") | .id" | head -1)"
+            --jq '.jobs[] | select(any(.steps[]; .name == "回写测试状态到 MisakaStudy")) | .id' | head -1)"
           RUN_URL="https://github.com/${{ github.repository }}/actions/runs/$RUN_ID/job/$JOB_ID"
           gh api -X POST \
             repos/YangRucheng/MisakaStudy/statuses/${{ github.event.client_payload.ref }} \
