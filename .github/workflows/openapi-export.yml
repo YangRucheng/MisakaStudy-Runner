@@ -1,0 +1,66 @@
+name: 导出 OpenAPI 规范
+
+# 由 MisakaStudy 仓库的 trigger.yml 通过 repository_dispatch 触发（PR 事件）
+# 生成 openapi.yaml 并以 [skip ci] 提交回 PR 分支（避免再次触发 trigger.yml）
+on:
+  repository_dispatch:
+    types: [misaka_pr]
+
+jobs:
+  export:
+    name: 生成并提交规范
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: server
+
+    steps:
+      - name: 签出 MisakaStudy 代码
+        uses: actions/checkout@v4
+        with:
+          repository: YangRucheng/MisakaStudy
+          ref: ${{ github.event.client_payload.ref }}
+          token: ${{ secrets.MISAKA_PAT }}
+
+      - name: 安装 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: 安装依赖
+        run: pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: 生成 OpenAPI 规范
+        run: python scripts/export_openapi.py
+
+      - name: 检查文件变更
+        id: diff
+        run: |
+          if [ -n "$(git status --porcelain -- openapi.yaml)" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 提交 OpenAPI 规范
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add openapi.yaml
+          git commit -m "docs: 更新 OpenAPI 规范 [skip ci]"
+          git push origin HEAD:${{ github.event.client_payload.head_ref }}
+
+      - name: 回写导出状态到 MisakaStudy
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.MISAKA_PAT }}
+        run: |
+          state=failure
+          if [ "${{ job.status }}" = "success" ]; then state=success; fi
+          gh api -X POST \
+            repos/YangRucheng/MisakaStudy/statuses/${{ github.event.client_payload.ref }} \
+            -f state="$state" \
+            -f context='导出 OpenAPI 规范（Runner）' \
+            -f description='由 MisakaStudy-Runner 仓库代为执行' \
+            -f target_url="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
