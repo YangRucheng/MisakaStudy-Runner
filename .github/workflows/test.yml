@@ -165,6 +165,8 @@ jobs:
         if: always()
         env:
           GH_TOKEN: ${{ secrets.PAT }}
+          PR_NUMBER: ${{ github.event.client_payload.pr_number }}
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/job/${{ github.job_id }}
         run: |
           state=failure
           if [ "${{ job.status }}" = "success" ]; then state=success; fi
@@ -173,4 +175,16 @@ jobs:
             -f state="$state" \
             -f context='测试通过检查（Runner）' \
             -f description='由 MisakaStudy-Runner 仓库代为执行' \
-            -f target_url="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            -f target_url="$RUN_URL"
+
+          # 以 bot 风格在 PR 上发评论，引用工作流 Job 链接
+          if [ -n "$PR_NUMBER" ]; then
+            if [ "$state" = "success" ]; then
+              summary="测试通过 ✅"
+            else
+              summary="测试未通过 ❌"
+            fi
+            body=$(printf '🤖 **MisakaStudy Runner**：%s\n\n[查看测试工作流 Job](%s)' "$summary" "$RUN_URL")
+            jq -n --arg body "$body" '{body:$body}' | \
+              gh api -X POST "repos/YangRucheng/MisakaStudy/issues/$PR_NUMBER/comments" --input -
+          fi
