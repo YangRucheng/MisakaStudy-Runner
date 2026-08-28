@@ -45,6 +45,11 @@ jobs:
       run:
         working-directory: server
 
+    env:
+      # faceToken 在线接口测试使用的测试账号（Runner 仓库 secrets）
+      CX_USERNAME: ${{ secrets.CX_USERNAME }}
+      CX_PASSWORD: ${{ secrets.CX_PASSWORD }}
+
     steps:
       - name: 签出 MisakaStudy 代码
         uses: actions/checkout@v4
@@ -73,6 +78,16 @@ jobs:
         run: >-
           pytest tests/test_routes.py tests/test_feishu.py tests/test_scheduler.py
           tests/test_user_service.py tests/test_weixin.py -v
+
+      - name: Pytest 在线接口测试（faceToken）
+        # 用 CX_USERNAME/CX_PASSWORD 登录超星并验证 faceToken 接口；隐私红线：
+        # 仅允许输出 /pptSign/check-face-result 响应，其余接口数据一律不落日志。
+        run: |
+          if [ -f tests/test_chaoxing_face_token.py ]; then
+            pytest tests/test_chaoxing_face_token.py -v
+          else
+            echo "未找到 tests/test_chaoxing_face_token.py，跳过在线接口测试"
+          fi
 
   task-tests:
     name: 任务端测试
