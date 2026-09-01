@@ -2,18 +2,19 @@ name: 上传小程序代码
 
 # 触发方式：
 #   1) 手动：本仓库 Actions 页「Run workflow」，把源码直传为体验版（版本号 v4.YYYY.MM.DD）。
-#   2) PR：由 MisakaStudy 的 trigger.yml 经 repository_dispatch(misaka_pr) 转发，
-#      仅当本次 PR 改动了 miniprogram/** 才上传，版本号命名为「PR #<编号>」。
-#      PR 合并时 trigger.yml 会以 closed 活动再转发一次，届时查得 merged=true，
-#      则以完全相同的 commit 再传一次「PR #<编号>（已合并）」（代码内容与合并前一致）。
+#   2) 自动：MisakaStudy（私有侧）在 trigger.yml 判断 miniprogram/** 是否改动，
+#      命中后经 repository_dispatch(misaka_miniprogram) 派发——Runner 收到请求即始终执行上传，
+#      不再自行过滤路径。
+#      - PR 事件：版本号「PR #<编号>」（开发期临时版，占用 CI 机器人 21-30）；
+#        PR 合并时 trigger.yml 会以 closed 活动再转发一次，Runner 查得 merged=true，
+#        以完全相同的 commit 再传一次「PR #<编号>（已合并）」（代码内容与合并前一致）。
+#      - push 事件（PR 合并落库后 next 的主分支提交）：版本号 v4.YYYY.MM.DD，robot 1。
 # 所有直传都只上传为开发版本，不会提交审核；版本描述统一写「由 GitHub Actions 自动上传！」。
 #
 # appid 与代码上传密钥取自检出的 MisakaStudy 仓库自身：
 #   - appid：miniprogram/project.config.json 的 appid 字段
 #   - 密钥：miniprogram/.private/private.<appid>.key
 # 因此本工作流无需额外私密即可运行。
-#
-# PR 直传为临时版本，占用 CI 机器人 21-30：robot = 21 + (PR编号 % 10)。
 
 on:
   workflow_dispatch:
@@ -39,43 +40,15 @@ on:
         default: "由 GitHub Actions 自动上传！"
         type: string
   repository_dispatch:
-    types: [misaka_pr]
+    types: [misaka_miniprogram]
 
 concurrency:
   group: upload-miniprogram-${{ github.event_name }}
   cancel-in-progress: false
 
 jobs:
-  detect:
-    name: 检测小程序目录变更
-    # 仅 PR 事件需要按目录过滤；手动触发一律上传
-    if: github.event_name == 'repository_dispatch'
-    runs-on: ubuntu-24.04
-    outputs:
-      miniprogram: ${{ steps.filter.outputs.miniprogram }}
-    steps:
-      - name: 签出 MisakaStudy 代码
-        uses: actions/checkout@v4
-        with:
-          repository: YangRucheng/MisakaStudy
-          ref: ${{ github.event.client_payload.ref }}
-          token: ${{ secrets.PAT }}
-
-      - name: 检测变更路径
-        id: filter
-        uses: dorny/paths-filter@v3
-        with:
-          base: ${{ github.event.client_payload.before }}
-          ref: ${{ github.event.client_payload.ref }}
-          filters: |
-            miniprogram:
-              - 'miniprogram/**'
-
   upload:
     name: 直传小程序代码
-    # 手动触发始终上传；PR 仅在 miniprogram/** 有改动时上传
-    if: github.event_name != 'repository_dispatch' || needs.detect.outputs.miniprogram == 'true'
-    needs: detect
     runs-on: ubuntu-24.04
     steps:
       - name: 签出 MisakaStudy 代码
@@ -101,6 +74,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.PAT }}
           EVENT: ${{ github.event_name }}
+          PAYLOAD_EVENT: ${{ github.event.client_payload.event_name }}
           PR_NUMBER: ${{ github.event.client_payload.pr_number }}
           VERSION_INPUT: ${{ inputs.version }}
           ROBOT_INPUT: ${{ inputs.robot }}
@@ -112,15 +86,21 @@ jobs:
           [ -f "$KEY_PATH" ] || { echo "未找到代码上传密钥 $KEY_PATH"; exit 1; }
 
           if [ "$EVENT" = "repository_dispatch" ]; then
-            # 检出的仍是 PR head commit，无论合并前后代码内容完全一致
-            # 查 PR 是否已合并：合并后（closed+merged）再转发一次，命名为「PR #<编号>（已合并）」
-            MERGED="$(gh api repos/YangRucheng/MisakaStudy/pulls/"$PR_NUMBER" --jq '.merged')"
-            if [ "$MERGED" = "true" ]; then
-              VERSION="PR #${PR_NUMBER}（已合并）"
+            if [ "$PAYLOAD_EVENT" = "pull_request" ]; then
+              # 检出的仍是 PR head commit，无论合并前后代码内容完全一致
+              # 查 PR 是否已合并：合并后（closed+merged）再转发一次，命名为「PR #<编号>（已合并）」
+              MERGED="$(gh api repos/YangRucheng/MisakaStudy/pulls/"$PR_NUMBER" --jq '.merged')"
+              if [ "$MERGED" = "true" ]; then
+                VERSION="PR #${PR_NUMBER}（已合并）"
+              else
+                VERSION="PR #${PR_NUMBER}"
+              fi
+              ROBOT=$(( 21 + (PR_NUMBER % 10) ))
             else
-              VERSION="PR #${PR_NUMBER}"
+              # push 主分支（PR 合并落库后）：用日期版本号，robot 1
+              VERSION="$(TZ=Asia/Shanghai date +v4.%Y.%m.%d)"
+              ROBOT=1
             fi
-            ROBOT=$(( 21 + (PR_NUMBER % 10) ))
             DESC="由 GitHub Actions 自动上传！"
           else
             VERSION="$VERSION_INPUT"
