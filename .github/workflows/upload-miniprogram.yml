@@ -1,0 +1,173 @@
+name: 上传小程序代码
+
+# 触发方式：
+#   1) 手动：本仓库 Actions 页「Run workflow」，把源码直传为体验版（版本号 v4.YYYY.MM.DD）。
+#   2) PR：由 MisakaStudy 的 trigger.yml 经 repository_dispatch(misaka_pr) 转发，
+#      仅当本次 PR 改动了 miniprogram/** 才上传，版本号命名为「PR #<编号>」。
+# 两种方式都只上传为开发版本，不会提交审核。
+#
+# appid 与代码上传密钥取自检出的 MisakaStudy 仓库自身：
+#   - appid：miniprogram/project.config.json 的 appid 字段
+#   - 密钥：miniprogram/.private/private.<appid>.key
+# 因此本工作流无需额外私密即可运行。
+#
+# PR 直传为临时版本，占用 CI 机器人 21-30：robot = 21 + (PR编号 % 10)。
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 要上传的 MisakaStudy 分支或 commit（默认 next）
+        required: false
+        default: "next"
+        type: string
+      version:
+        description: 版本号（留空则自动用 v4.<当天日期>）
+        required: false
+        default: ""
+        type: string
+      robot:
+        description: 机器人编号 1-30（手动上传默认 1）
+        required: false
+        default: "1"
+        type: string
+      desc:
+        description: 版本描述
+        required: false
+        default: "[v4 御坂网络 Misaka]CI 直传源码，请勿提交审核，请用体验版二维码测试，新用户可加企鹅群 939448085！"
+        type: string
+  repository_dispatch:
+    types: [misaka_pr]
+
+concurrency:
+  group: upload-miniprogram-${{ github.event_name }}
+  cancel-in-progress: false
+
+jobs:
+  detect:
+    name: 检测小程序目录变更
+    # 仅 PR 事件需要按目录过滤；手动触发一律上传
+    if: github.event_name == 'repository_dispatch'
+    runs-on: ubuntu-24.04
+    outputs:
+      miniprogram: ${{ steps.filter.outputs.miniprogram }}
+    steps:
+      - name: 签出 MisakaStudy 代码
+        uses: actions/checkout@v4
+        with:
+          repository: YangRucheng/MisakaStudy
+          ref: ${{ github.event.client_payload.ref }}
+          token: ${{ secrets.PAT }}
+
+      - name: 检测变更路径
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          base: ${{ github.event.client_payload.before }}
+          ref: ${{ github.event.client_payload.ref }}
+          filters: |
+            miniprogram:
+              - 'miniprogram/**'
+
+  upload:
+    name: 直传小程序代码
+    # 手动触发始终上传；PR 仅在 miniprogram/** 有改动时上传
+    if: github.event_name != 'repository_dispatch' || needs.detect.outputs.miniprogram == 'true'
+    needs: detect
+    runs-on: ubuntu-24.04
+    steps:
+      - name: 签出 MisakaStudy 代码
+        uses: actions/checkout@v4
+        with:
+          repository: YangRucheng/MisakaStudy
+          ref: ${{ github.event.client_payload.ref || inputs.ref }}
+          token: ${{ secrets.PAT }}
+
+      - name: 安装 Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: 安装 miniprogram-ci
+        working-directory: miniprogram
+        # 仅安装 CI 命令行工具；源码依赖已预构建为 miniprogram_npm，无需构建 npm
+        run: npm install --no-save --no-audit --no-fund miniprogram-ci@2.1.19
+
+      - name: 上传小程序代码
+        id: run_upload
+        working-directory: miniprogram
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.client_payload.pr_number }}
+          VERSION_INPUT: ${{ inputs.version }}
+          ROBOT_INPUT: ${{ inputs.robot }}
+          DESC_INPUT: ${{ inputs.desc }}
+        run: |
+          set -euo pipefail
+          APPID="$(jq -r '.appid' project.config.json)"
+          KEY_PATH=".private/private.${APPID}.key"
+          [ -f "$KEY_PATH" ] || { echo "未找到代码上传密钥 $KEY_PATH"; exit 1; }
+
+          if [ "$EVENT" = "repository_dispatch" ]; then
+            # PR 直传：版本号命名为「PR #<编号>」，机器人号取 21-30 段（临时版本专用）
+            VERSION="PR #${PR_NUMBER}"
+            ROBOT=$(( 21 + (PR_NUMBER % 10) ))
+            DESC="${PR_NUMBER} 号 PR 自动上传，请勿提交审核"
+          else
+            VERSION="$VERSION_INPUT"
+            [ -z "$VERSION" ] && VERSION="$(TZ=Asia/Shanghai date +v4.%Y.%m.%d)"
+            ROBOT="$ROBOT_INPUT"
+            DESC="$DESC_INPUT"
+          fi
+
+          echo "上传目标 appid=${APPID} version=${VERSION} robot=${ROBOT}"
+          npx --no-install miniprogram-ci upload \
+            --appid "$APPID" \
+            --pp . \
+            --pkp "$KEY_PATH" \
+            --uv "$VERSION" \
+            --ud "$DESC" \
+            --robot "$ROBOT" \
+            --threads 1 \
+            --enable-es6 --enable-es7 --enable-autoprefixwxss \
+            --enable-minify --enable-code-protect \
+            --pi \
+              "node_modules/**" ".private/**" ".keystore" "resource/**" \
+              "Dockerfile" ".dockerignore" "ci-client.js" \
+              "package.json" "package-lock.json" "README.md" \
+              "miniapp/**" "project.miniapp.json" "app.miniapp.json" "privacy.miniapp.json"
+
+      - name: 回写上传状态到 MisakaStudy
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.PAT }}
+          RUN_ID: ${{ github.run_id }}
+          EVENT: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.client_payload.pr_number }}
+        run: |
+          state=failure
+          if [ "${{ job.status }}" = "success" ]; then state=success; fi
+          # job context 无 name 字段，改为按本步骤名反查当前 job 的 ID
+          JOB_ID="$(gh api "repos/${{ github.repository }}/actions/runs/$RUN_ID/jobs" \
+            --jq '.jobs[] | select(any(.steps[]; .name == "回写上传状态到 MisakaStudy")) | .id' | head -1)"
+          RUN_URL="https://github.com/${{ github.repository }}/actions/runs/$RUN_ID/job/$JOB_ID"
+          # 工作目录根即检出的 MisakaStudy，取当前 HEAD 作为所上传的 commit
+          SHA="$(git rev-parse HEAD)"
+          gh api -X POST \
+            repos/YangRucheng/MisakaStudy/statuses/"$SHA" \
+            -f state="$state" \
+            -f context='上传小程序代码（Runner）' \
+            -f description='由 MisakaStudy-Runner 仓库代为执行' \
+            -f target_url="$RUN_URL"
+
+          # PR 事件在 PR 上发一条 bot 评论，附上传 Job 链接
+          if [ "$EVENT" = "repository_dispatch" ] && [ -n "$PR_NUMBER" ]; then
+            if [ "$state" = "success" ]; then
+              summary="小程序代码已上传为体验版（PR #${PR_NUMBER}）✅"
+            else
+              summary="小程序代码上传失败 ❌"
+            fi
+            body=$(printf '🤖 **MisakaStudy Runner**：%s\n\n[查看上传工作流 Job](%s)' "$summary" "$RUN_URL")
+            jq -n --arg body "$body" '{body:$body}' | \
+              gh api -X POST "repos/YangRucheng/MisakaStudy/issues/$PR_NUMBER/comments" --input -
+          fi
