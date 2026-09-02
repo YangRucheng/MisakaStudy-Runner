@@ -3,8 +3,7 @@ name: 执行 PUBLISH 发布脚本（手动）
 # 触发方式：仅支持本仓库 Actions 页「Run workflow」手动运行。
 # 语义：仓库机密 PUBLISH 存有一段 bash 发布脚本；本工作流把该机密落盘后执行。
 # 说明：
-#   - 默认先签出私有 MisakaStudy 代码（经 secrets.PAT），脚本工作目录即其仓库根；
-#     输入 ref 留空则跳过签出，在空工作区运行（脚本需自取代码）。
+#   - 签出私有 MisakaStudy 代码（经 secrets.PAT），脚本工作目录即其仓库根。
 #   - PUBLISH 内容属于机密：只经环境变量透传给步骤，绝不明文写入命令/日志。
 #   - 安全红线（公开仓库）：仅允许 workflow_dispatch，不配置 push / pull_request 触发。
 
@@ -12,7 +11,7 @@ on:
   workflow_dispatch:
     inputs:
       ref:
-        description: 要签出的 MisakaStudy 分支或 commit（留空则跳过签出）
+        description: 要签出的 MisakaStudy 分支或 commit
         required: false
         default: "next"
         type: string
@@ -21,11 +20,6 @@ on:
         required: false
         default: ""
         type: string
-      timeout:
-        description: 整个 Job 超时（分钟）
-        required: false
-        default: 15
-        type: number
 
 concurrency:
   group: publish
@@ -35,10 +29,9 @@ jobs:
   publish:
     name: 执行 PUBLISH 脚本
     runs-on: ubuntu-24.04
-    timeout-minutes: ${{ inputs.timeout }}
+    timeout-minutes: 60
     steps:
       - name: 签出 MisakaStudy 代码
-        if: inputs.ref != ''
         uses: actions/checkout@v4
         with:
           repository: YangRucheng/MisakaStudy
@@ -62,11 +55,7 @@ jobs:
           printf '%s\n' "$PUBLISH_SCRIPT" | sed 's/\r$//' > "$SCRIPT"
           chmod +x "$SCRIPT"
 
-          if [ -z "$PUBLISH_REF" ]; then
-            echo "工作区为空（未签出代码），开始执行 PUBLISH 脚本…"
-          else
-            echo "工作区为 MisakaStudy@${PUBLISH_REF}，开始执行 PUBLISH 脚本…"
-          fi
+          echo "工作区为 MisakaStudy@${PUBLISH_REF}，开始执行 PUBLISH 脚本…"
 
           if [ -n "$PUBLISH_ARGS" ]; then
             read -r -a ARGV <<< "$PUBLISH_ARGS"
