@@ -1,0 +1,76 @@
+name: 执行 PUBLISH 发布脚本（手动）
+
+# 触发方式：仅支持本仓库 Actions 页「Run workflow」手动运行。
+# 语义：仓库机密 PUBLISH 存有一段 bash 发布脚本；本工作流把该机密落盘后执行。
+# 说明：
+#   - 默认先签出私有 MisakaStudy 代码（经 secrets.PAT），脚本工作目录即其仓库根；
+#     输入 ref 留空则跳过签出，在空工作区运行（脚本需自取代码）。
+#   - PUBLISH 内容属于机密：只经环境变量透传给步骤，绝不明文写入命令/日志。
+#   - 安全红线（公开仓库）：仅允许 workflow_dispatch，不配置 push / pull_request 触发。
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 要签出的 MisakaStudy 分支或 commit（留空则跳过签出）
+        required: false
+        default: "next"
+        type: string
+      args:
+        description: 追加传给 PUBLISH 脚本的位置参数（可空）
+        required: false
+        default: ""
+        type: string
+      timeout:
+        description: 整个 Job 超时（分钟）
+        required: false
+        default: 15
+        type: number
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: 执行 PUBLISH 脚本
+    runs-on: ubuntu-24.04
+    timeout-minutes: ${{ inputs.timeout }}
+    steps:
+      - name: 签出 MisakaStudy 代码
+        if: inputs.ref != ''
+        uses: actions/checkout@v4
+        with:
+          repository: YangRucheng/MisakaStudy
+          ref: ${{ inputs.ref }}
+          token: ${{ secrets.PAT }}
+
+      - name: 运行 PUBLISH 脚本
+        env:
+          PUBLISH_SCRIPT: ${{ secrets.PUBLISH }}
+          PUBLISH_REF: ${{ inputs.ref }}
+          PUBLISH_ARGS: ${{ inputs.args }}
+          GH_TOKEN: ${{ secrets.PAT }}
+        run: |
+          set -euo pipefail
+
+          [ -n "$PUBLISH_SCRIPT" ] || { echo "未找到机密 PUBLISH，请先在仓库 Settings → Secrets 配置后重试"; exit 1; }
+
+          SCRIPT="$RUNNER_TEMP/publish.sh"
+          # PUBLISH 是一整段 bash 脚本：原样落盘再执行，避免把机密展开进命令行（防注入/防泄漏）。
+          # 顺带去掉粘贴可能带入的 CR，保证 \r 不会混进脚本。
+          printf '%s\n' "$PUBLISH_SCRIPT" | sed 's/\r$//' > "$SCRIPT"
+          chmod +x "$SCRIPT"
+
+          if [ -z "$PUBLISH_REF" ]; then
+            echo "工作区为空（未签出代码），开始执行 PUBLISH 脚本…"
+          else
+            echo "工作区为 MisakaStudy@${PUBLISH_REF}，开始执行 PUBLISH 脚本…"
+          fi
+
+          if [ -n "$PUBLISH_ARGS" ]; then
+            read -r -a ARGV <<< "$PUBLISH_ARGS"
+            bash "$SCRIPT" "${ARGV[@]}"
+          else
+            bash "$SCRIPT"
+          fi
