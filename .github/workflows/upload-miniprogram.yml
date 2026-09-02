@@ -1,4 +1,4 @@
-name: 上传小程序代码
+name: 小程序代码上传
 
 # 触发方式：
 #   1) 手动：本仓库 Actions 页「Run workflow」，把源码直传为体验版（版本号 v4.YYYY.MM.DD）。

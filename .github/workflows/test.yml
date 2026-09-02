@@ -1,4 +1,4 @@
-name: 测试
+name: 基础测试
 
 # 由 MisakaStudy 仓库的 trigger.yml 通过 repository_dispatch 触发（PR 事件）
 # 检出 MisakaStudy 对应 commit 执行测试，并把聚合状态回写到该 commit

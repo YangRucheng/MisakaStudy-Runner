@@ -1,4 +1,4 @@
-name: 执行 PUBLISH 发布脚本（手动）
+name: 发布脚本执行
 
 # 触发方式：仅支持本仓库 Actions 页「Run workflow」手动运行。
 # 语义：仓库机密 PUBLISH 存有一段 bash 发布脚本；本工作流把该机密落盘后执行。

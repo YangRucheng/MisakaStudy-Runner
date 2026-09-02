@@ -1,4 +1,4 @@
-name: 导出 OpenAPI 规范
+name: 接口 OpenAPI 规范导出
 
 # 由 MisakaStudy 仓库的 trigger.yml 通过 repository_dispatch 触发（PR 事件）
 # 生成 openapi.yaml 并以 [skip ci] 提交回 PR 分支（避免再次触发 trigger.yml）

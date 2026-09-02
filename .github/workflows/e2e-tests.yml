@@ -1,4 +1,4 @@
-name: E2E 模拟测试
+name: 端到端模拟测试
 
 # 由 MisakaStudy 仓库的 trigger.yml 通过 repository_dispatch 触发（push 事件）
 # 仅当 server 路径有变更时运行，并把状态回写到对应 commit
