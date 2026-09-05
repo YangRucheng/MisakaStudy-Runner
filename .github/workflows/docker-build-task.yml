@@ -21,7 +21,7 @@ jobs:
       - name: 签出 MisakaStudy 代码
         uses: actions/checkout@v4
         with:
-          repository: YangRucheng/MisakaStudy
+          repository: Sakana-1314/MisakaStudy
           ref: ${{ github.event.client_payload.ref || 'next' }}
           token: ${{ secrets.PAT }}
 
@@ -45,7 +45,7 @@ jobs:
       - name: 签出 MisakaStudy 代码
         uses: actions/checkout@v4
         with:
-          repository: YangRucheng/MisakaStudy
+          repository: Sakana-1314/MisakaStudy
           ref: ${{ github.event.client_payload.ref || 'next' }}
           token: ${{ secrets.PAT }}
 

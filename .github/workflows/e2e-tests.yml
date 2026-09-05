@@ -16,7 +16,7 @@ jobs:
       - name: 签出 MisakaStudy 代码
         uses: actions/checkout@v4
         with:
-          repository: YangRucheng/MisakaStudy
+          repository: Sakana-1314/MisakaStudy
           ref: ${{ github.event.client_payload.ref }}
           token: ${{ secrets.PAT }}
 
@@ -67,7 +67,7 @@ jobs:
       - name: 签出 MisakaStudy 代码
         uses: actions/checkout@v4
         with:
-          repository: YangRucheng/MisakaStudy
+          repository: Sakana-1314/MisakaStudy
           ref: ${{ github.event.client_payload.ref }}
           token: ${{ secrets.PAT }}
 
@@ -135,7 +135,7 @@ jobs:
             state=success
           fi
           gh api -X POST \
-            repos/YangRucheng/MisakaStudy/statuses/${{ github.event.client_payload.ref }} \
+            repos/Sakana-1314/MisakaStudy/statuses/${{ github.event.client_payload.ref }} \
             -f state="$state" \
             -f context='E2E 模拟测试（Runner）' \
             -f description='由 MisakaStudy-Runner 仓库代为执行' \

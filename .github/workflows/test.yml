@@ -18,7 +18,7 @@ jobs:
       - name: 签出 MisakaStudy 代码
         uses: actions/checkout@v4
         with:
-          repository: YangRucheng/MisakaStudy
+          repository: Sakana-1314/MisakaStudy
           ref: ${{ github.event.client_payload.ref }}
           token: ${{ secrets.PAT }}
 
@@ -54,7 +54,7 @@ jobs:
       - name: 签出 MisakaStudy 代码
         uses: actions/checkout@v4
         with:
-          repository: YangRucheng/MisakaStudy
+          repository: Sakana-1314/MisakaStudy
           ref: ${{ github.event.client_payload.ref }}
           token: ${{ secrets.PAT }}
 
@@ -102,7 +102,7 @@ jobs:
       - name: 签出 MisakaStudy 代码
         uses: actions/checkout@v4
         with:
-          repository: YangRucheng/MisakaStudy
+          repository: Sakana-1314/MisakaStudy
           ref: ${{ github.event.client_payload.ref }}
           token: ${{ secrets.PAT }}
 
@@ -134,7 +134,7 @@ jobs:
       - name: 签出 MisakaStudy 代码
         uses: actions/checkout@v4
         with:
-          repository: YangRucheng/MisakaStudy
+          repository: Sakana-1314/MisakaStudy
           ref: ${{ github.event.client_payload.ref }}
           token: ${{ secrets.PAT }}
 
@@ -190,7 +190,7 @@ jobs:
             --jq '.jobs[] | select(any(.steps[]; .name == "回写测试状态到 MisakaStudy")) | .id' | head -1)"
           RUN_URL="https://github.com/${{ github.repository }}/actions/runs/$RUN_ID/job/$JOB_ID"
           gh api -X POST \
-            repos/YangRucheng/MisakaStudy/statuses/${{ github.event.client_payload.ref }} \
+            repos/Sakana-1314/MisakaStudy/statuses/${{ github.event.client_payload.ref }} \
             -f state="$state" \
             -f context='测试通过检查（Runner）' \
             -f description='由 MisakaStudy-Runner 仓库代为执行' \
@@ -205,5 +205,5 @@ jobs:
             fi
             body=$(printf '🤖 **MisakaStudy Runner**：%s\n\n[查看测试工作流 Job](%s)' "$summary" "$RUN_URL")
             jq -n --arg body "$body" '{body:$body}' | \
-              gh api -X POST "repos/YangRucheng/MisakaStudy/issues/$PR_NUMBER/comments" --input -
+              gh api -X POST "repos/Sakana-1314/MisakaStudy/issues/$PR_NUMBER/comments" --input -
           fi

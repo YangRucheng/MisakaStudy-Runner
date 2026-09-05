@@ -54,7 +54,7 @@ jobs:
       - name: 签出 MisakaStudy 代码
         uses: actions/checkout@v4
         with:
-          repository: YangRucheng/MisakaStudy
+          repository: Sakana-1314/MisakaStudy
           ref: ${{ github.event.client_payload.ref || inputs.ref }}
           token: ${{ secrets.PAT }}
 
@@ -89,7 +89,7 @@ jobs:
             if [ "$PAYLOAD_EVENT" = "pull_request" ]; then
               # 检出的仍是 PR head commit，无论合并前后代码内容完全一致
               # 查 PR 是否已合并：合并后（closed+merged）再转发一次，命名为「PR #<编号>（已合并）」
-              MERGED="$(gh api repos/YangRucheng/MisakaStudy/pulls/"$PR_NUMBER" --jq '.merged')"
+              MERGED="$(gh api repos/Sakana-1314/MisakaStudy/pulls/"$PR_NUMBER" --jq '.merged')"
               if [ "$MERGED" = "true" ]; then
                 VERSION="PR #${PR_NUMBER}（已合并）"
               else
@@ -143,7 +143,7 @@ jobs:
           # 工作目录根即检出的 MisakaStudy，取当前 HEAD 作为所上传的 commit
           SHA="$(git rev-parse HEAD)"
           gh api -X POST \
-            repos/YangRucheng/MisakaStudy/statuses/"$SHA" \
+            repos/Sakana-1314/MisakaStudy/statuses/"$SHA" \
             -f state="$state" \
             -f context='上传小程序代码（Runner）' \
             -f description='由 MisakaStudy-Runner 仓库代为执行' \
@@ -158,5 +158,5 @@ jobs:
             fi
             body=$(printf '🤖 **MisakaStudy Runner**：%s\n\n[查看上传工作流 Job](%s)' "$summary" "$RUN_URL")
             jq -n --arg body "$body" '{body:$body}' | \
-              gh api -X POST "repos/YangRucheng/MisakaStudy/issues/$PR_NUMBER/comments" --input -
+              gh api -X POST "repos/Sakana-1314/MisakaStudy/issues/$PR_NUMBER/comments" --input -
           fi

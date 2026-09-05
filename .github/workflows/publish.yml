@@ -34,7 +34,7 @@ jobs:
       - name: 签出 MisakaStudy 代码
         uses: actions/checkout@v4
         with:
-          repository: YangRucheng/MisakaStudy
+          repository: Sakana-1314/MisakaStudy
           ref: ${{ inputs.ref }}
           token: ${{ secrets.PAT }}
 
